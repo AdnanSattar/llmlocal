@@ -1,0 +1,40 @@
+services:
+  transformers:
+    build: .
+    container_name: transformers_server
+    ports:
+      - target: 8000
+        published: ${VLLM_PORT:-8000}
+        protocol: tcp
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+    volumes:
+      - ./models:/root/.cache/huggingface # cache models locally
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${VLLM_PORT:-8000}/health"]
+    profiles: ["transformers"]
+
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: vllm_server
+    ports:
+      - target: 8000
+        published: ${VLLM_PORT:-8000}
+        protocol: tcp
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
+      - VLLM_DEVICE=${VLLM_DEVICE}
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
+      - VLLM_QUANTIZATION=${VLLM_QUANTIZATION}
+    command: >
+      --model ${VLLM_MODELS} --device ${VLLM_DEVICE} --quantization ${VLLM_QUANTIZATION} --cuda_visible_devices ${CUDA_VISIBLE_DEVICES} --port 8000
+    volumes:
+      - ./models:/root/.cache/huggingface
+    profiles: ["vllm"]
+

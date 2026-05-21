@@ -1,0 +1,28 @@
+# Docker build marker (run.sh)
+.docker_built
+
+# Downloaded / cached Hugging Face models (mounted at ./models)
+models/
+
+# Secrets and local config (use .env.example as a template if you add one)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+.venv/
+venv/
+env/
+
+# Logs and local runtime
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
