@@ -142,4 +142,3 @@ curl http://localhost:8000/v1/completions \
 Notes:
 
 - This path is ideal for PoC and CPU‑only environments. For production throughput and larger models, vLLM on a modern GPU is recommended.
-# llmlocal
