@@ -35,18 +35,12 @@ This project provides **OpenAI-compatible `/v1` endpoints** for self-hosted LLMs
 
 2. **Configure `.env`**  
 
-   Minimal variables (examples):
-
    ```bash
-
-   # Backend: transformers (CPU, default) | vllm (GPU-ready)
-   RUN_BACKEND=transformers
-   VLLM_PORT=8000
-   # Optional: HF token for private/model downloads
-   HF_TOKEN=
-   # For vLLM (when GPU available)
-   VLLM_MODEL=Qwen/Qwen3-0.6B
+   cp .env.example .env
+   # Edit .env — set HF_TOKEN if needed, RUN_BACKEND, models, port
    ```
+
+   Key variables: `RUN_BACKEND` (`transformers` | `vllm`), `VLLM_PORT`, `HF_TOKEN`, `VLLM_MODELS` (for vLLM). See `.env.example` for the full list.
 
 3. **Start (CPU, Transformers backend)**  
 
