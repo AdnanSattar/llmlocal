@@ -12,8 +12,6 @@ services:
         protocol: tcp
     environment:
       - LLM_BACKEND=llama_cpp
-      - LLM_MODEL=${LLM_MODEL:-Qwen3-1.7B-Q4_K_M}
-      - LLM_MODEL_PATH=${LLM_MODEL_PATH:-models/gguf/Qwen3-1.7B-Q4_K_M.gguf}
       - LLM_BACKEND_PORT=8100
       - LLM_CONTEXT_SIZE=${LLM_CONTEXT_SIZE:-8192}
       - LLM_THREADS=${LLM_THREADS:-0}
@@ -25,8 +23,10 @@ services:
       - LLM_REQUEST_TIMEOUT=${LLM_REQUEST_TIMEOUT:-600}
       - LLM_STARTUP_TIMEOUT=${LLM_STARTUP_TIMEOUT:-180}
       - LLM_EXTRA_ARGS=${LLM_EXTRA_ARGS:-}
-      - LLM_MODEL_REPO=${LLM_MODEL_REPO:-}
       - HF_TOKEN=${HF_TOKEN:-}
+      - LLM_MODEL=${LLM_MODEL:-Qwen3-1.7B-Q4_K_M}
+      - LLM_MODEL_PATH=${LLM_MODEL_PATH:-models/gguf/qwen3-1.7b-q4_k_m.gguf}
+      - LLM_MODEL_REPO=${LLM_MODEL_REPO:-}
       # API key guarding /v1/*, POST /jobs, GET /jobs/{id} and GET /queue/metrics
       # (Authorization: Bearer <key>); empty value = dev mode with routes open.
       # Sourced from .env at deploy time; never baked into the image, never printed.
