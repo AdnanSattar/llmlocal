@@ -2,14 +2,38 @@
   "info": {
     "_postman_id": "5b2f1c6e-9a4d-4e3b-8f21-0a7c6d5e4b3a",
     "name": "llmlocal — OpenAI-compatible local LLM server",
-    "description": "All endpoints of the llmlocal server (default http://localhost:8000).\n\n**Interactive alternative:** the running server serves live Swagger UI at `/docs` (and ReDoc at `/redoc`) with an **Authorize** button and request-body examples pre-filled for the POST endpoints — handy for a quick manual check before scripting.\n\n**Auth setup:** set the collection variable `api_key` to the `API_KEY` value from `.env` (any non-empty string; the server does not require a particular format). Requests that need auth carry it as `Authorization: Bearer {{api_key}}` automatically. Leave it empty when running in dev mode (API_KEY unset).\n\n**Worker endpoints** (`/jobs/next`, `/workers/heartbeat`) use `WORKER_TOKEN` in the query string instead — never the API key. `/health`, `/docs`, `/redoc`, `/openapi.json` and `/webhooks/completions` need no credentials.\n\nSee `docs/API_EXAMPLES.md` for curl equivalents and `README.md` for the full auth model. Streaming requests (`\"stream\": true`) return `text/event-stream`; use Postman's Stream/Raw view to watch chunks.",
+    "description": "All endpoints of the llmlocal server (default production base http://8.231.171.198:8000).\n\n**Base URL & slash safety:** every request builds its URL from the collection variables `{{base_url}}` (origin only — NO trailing slash) and `{{api_base_url}}` (= `{{base_url}}/v1`). Never append a path that starts with `/` to a base that already ends with `/`: that combination produced `//v1/...` requests which the server (running with redirect_slashes=False) answers with 404. A collection-level pre-request script strips any trailing slash from `base_url` and rebuilds `api_base_url`, so the URL always contains exactly one slash between host, `/v1`, and the endpoint. Override `base_url` per environment (production: `http://8.231.171.198:8000`; local: `http://localhost:8000`) — see `docs/llmlocal.postman_environment.json` for a safe import template.\n\n**Interactive alternative:** the running server serves live Swagger UI at `/docs` (and ReDoc at `/redoc`) with an **Authorize** button and request-body examples pre-filled for the POST endpoints — handy for a quick manual check before scripting.\n\n**Auth setup:** set the collection variable `api_key` (or the active environment's `api_key`) to the `API_KEY` value from `.env` (any non-empty string; the server does not require a particular format). Protected requests inherit `Authorization: Bearer {{api_key}}` from the collection. Leave it empty when running in dev mode (API_KEY unset). Never commit a real key.\n\n**Worker endpoints** (`/jobs/next`, `/workers/heartbeat`) use `WORKER_TOKEN` in the query string instead — never the API key; those requests explicitly send no Authorization header. `/health`, `/docs`, `/redoc`, `/openapi.json` and `/webhooks/completions` need no credentials.\n\nSee `docs/API_EXAMPLES.md` for curl equivalents and `README.md` for the full auth model. Streaming requests (`\"stream\": true`) return `text/event-stream`; use Postman's Stream/Raw view to watch chunks — do not parse them as a single JSON body.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "auth": {
+    "type": "bearer",
+    "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Slash-safe URL construction (runs before every request in the collection).",
+          "// A base_url ending in \"/\" combined with a path starting with \"/\" yields",
+          "// \"//v1/...\", which the server returns as 404. Strip trailing slashes and",
+          "// recompute api_base_url so every URL has exactly one slash per boundary.",
+          "const origin = (pm.variables.get('base_url') || '').replace(/\\/+$/, '');",
+          "if (origin) {",
+          "  pm.variables.set('base_url', origin);",
+          "  pm.variables.set('api_base_url', origin + '/v1');",
+          "}"
+        ]
+      }
+    }
+  ],
   "variable": [
-    { "key": "base_url", "value": "http://localhost:8000", "type": "string" },
-    { "key": "api_key", "value": "", "type": "string", "description": "Paste your .env API_KEY value here. Never commit a real key." },
-    { "key": "worker_token", "value": "change-me", "type": "string", "description": "WORKER_TOKEN from .env (default shown; override if changed)." },
-    { "key": "model", "value": "Qwen3-1.7B-Q4_K_M", "type": "string", "description": "Default served model id; adjust if LLM_MODEL differs." },
+    { "key": "base_url", "value": "http://8.231.171.198:8000", "type": "string", "description": "Origin only (scheme://host:port) — NO trailing slash. Override per environment (e.g. http://localhost:8000)." },
+    { "key": "api_base_url", "value": "{{base_url}}/v1", "type": "string", "description": "Derived from base_url. Do not edit — the collection pre-request script keeps it slash-safe." },
+    { "key": "api_key", "value": "", "type": "string", "description": "Paste your .env API_KEY value here, or set it in the active environment. Never commit a real key. Required for /v1/* and /jobs, /jobs/{id}, /queue/metrics." },
+    { "key": "worker_token", "value": "change-me", "type": "string", "description": "WORKER_TOKEN from .env (default placeholder shown; override if changed). Used only by /jobs/next and /workers/heartbeat." },
+    { "key": "model", "value": "Qwen3-1.7B-Q4_K_M", "type": "string", "description": "Expected served model id (matches LLM_MODEL). The /v1/models test asserts it when set." },
     { "key": "job_id", "value": "", "type": "string", "description": "Set automatically by the 'Enqueue job' request." }
   ],
   "item": [
@@ -19,18 +43,20 @@
         {
           "name": "GET /health",
           "request": {
+            "auth": { "type": "noauth" },
             "method": "GET",
             "header": [],
             "url": { "raw": "{{base_url}}/health", "host": [ "{{base_url}}" ], "path": [ "health" ] },
-            "description": "Liveness probe. Public — no auth required."
+            "description": "Liveness probe. Public — no auth required. Returns text/plain 'OK' (200) or a 503 detail while the model loads."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Body is OK', () => pm.expect(pm.response.text().trim()).to.eql('OK'));" ] } }
           ]
         },
         {
           "name": "GET /docs (Swagger UI)",
           "request": {
+            "auth": { "type": "noauth" },
             "method": "GET",
             "header": [],
             "url": { "raw": "{{base_url}}/docs", "host": [ "{{base_url}}" ], "path": [ "docs" ] },
@@ -43,6 +69,7 @@
         {
           "name": "GET /redoc",
           "request": {
+            "auth": { "type": "noauth" },
             "method": "GET",
             "header": [],
             "url": { "raw": "{{base_url}}/redoc", "host": [ "{{base_url}}" ], "path": [ "redoc" ] },
@@ -55,10 +82,11 @@
         {
           "name": "GET /openapi.json",
           "request": {
+            "auth": { "type": "noauth" },
             "method": "GET",
             "header": [],
             "url": { "raw": "{{base_url}}/openapi.json", "host": [ "{{base_url}}" ], "path": [ "openapi.json" ] },
-            "description": "Machine-readable OpenAPI schema."
+            "description": "Machine-readable OpenAPI schema. Public."
           },
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has paths', () => pm.expect(pm.response.json().paths).to.have.property('/v1/chat/completions'));" ] } }
@@ -67,14 +95,13 @@
         {
           "name": "GET /v1/models",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{base_url}}/v1/models", "host": [ "{{base_url}}" ], "path": [ "v1", "models" ] },
-            "description": "Lists the served model. Requires the API key when auth is enabled."
+            "url": { "raw": "{{api_base_url}}/models", "host": [ "{{api_base_url}}" ], "path": [ "models" ] },
+            "description": "Lists the served model. Inherits the collection bearer auth (Authorization: Bearer {{api_key}}); public only when API_KEY is unset (dev mode)."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Valid JSON', () => pm.response.to.be.json);", "const body = pm.response.json();", "pm.test('object is \"list\"', () => pm.expect(body.object).to.eql('list'));", "pm.test('data is an array', () => pm.expect(body.data).to.be.an('array'));", "pm.test('at least one model returned', () => pm.expect(body.data).to.have.lengthOf.above(0));", "pm.test('model entry well-formed', () => { const m = body.data[0]; pm.expect(m.id).to.be.a('string').and.have.lengthOf.above(0); pm.expect(m.object).to.eql('model'); pm.expect(m.owned_by).to.eql('llmlocal'); });", "pm.test('id matches configured model (when set)', () => { const expected = pm.variables.get('model'); if (expected) { pm.expect(body.data.map(m => m.id)).to.include(expected); } });" ] } }
           ]
         }
       ]
@@ -85,53 +112,49 @@
         {
           "name": "POST /v1/completions (basic)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"prompt\": \"Explain what an API is.\",\n  \"max_tokens\": 60,\n  \"temperature\": 0.5\n}" },
-            "url": { "raw": "{{base_url}}/v1/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "completions" ] },
-            "description": "Basic text completion."
+            "url": { "raw": "{{api_base_url}}/completions", "host": [ "{{api_base_url}}" ], "path": [ "completions" ] },
+            "description": "Basic text completion. `model` is informational — the response echoes the configured model."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has choices', () => pm.expect(pm.response.json()).to.have.property('choices'));" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('object is text_completion', () => pm.expect(pm.response.json().object).to.eql('text_completion'));", "pm.test('Has choices', () => pm.expect(pm.response.json()).to.have.property('choices').that.is.an('array'));" ] } }
           ]
         },
         {
           "name": "POST /v1/completions (advanced params)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"prompt\": \"List three benefits of unit testing:\",\n  \"max_tokens\": 80,\n  \"temperature\": 0.4,\n  \"top_p\": 0.95,\n  \"stop\": [\"\\n\", \"User:\"]\n}" },
-            "url": { "raw": "{{base_url}}/v1/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "completions" ] },
+            "url": { "raw": "{{api_base_url}}/completions", "host": [ "{{api_base_url}}" ], "path": [ "completions" ] },
             "description": "temperature / top_p / stop-sequence sampling controls."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has usage', () => pm.expect(pm.response.json()).to.have.property('usage'));" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has usage', () => pm.expect(pm.response.json()).to.have.property('usage'));", "pm.test('Has choice text', () => pm.expect(pm.response.json().choices[0]).to.have.property('text'));" ] } }
           ]
         },
         {
           "name": "POST /v1/chat/completions (system prompt)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"You are a helpful assistant that responds briefly and clearly.\" },\n    { \"role\": \"user\", \"content\": \"What is an API?\" }\n  ],\n  \"max_tokens\": 80,\n  \"temperature\": 0.3\n}" },
-            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
-            "description": "Chat completion with a system prompt."
+            "url": { "raw": "{{api_base_url}}/chat/completions", "host": [ "{{api_base_url}}" ], "path": [ "chat", "completions" ] },
+            "description": "Chat completion with a system prompt. On a hybrid reasoning model the default thinking mode consumes part of max_tokens — raise it or add \"thinking\": false if content comes back empty."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Assistant reply', () => pm.expect(pm.response.json().choices[0].message.role).to.eql('assistant'));" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('object is chat.completion', () => pm.expect(pm.response.json().object).to.eql('chat.completion'));", "pm.test('Assistant reply', () => pm.expect(pm.response.json().choices[0].message.role).to.eql('assistant'));", "pm.test('Has content property', () => pm.expect(pm.response.json().choices[0].message).to.have.property('content'));" ] } }
           ]
         },
         {
           "name": "POST /v1/chat/completions (multi-turn)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"You are a helpful assistant.\" },\n    { \"role\": \"user\", \"content\": \"What is the capital of France?\" },\n    { \"role\": \"assistant\", \"content\": \"Paris.\" },\n    { \"role\": \"user\", \"content\": \"And its population?\" }\n  ],\n  \"max_tokens\": 60\n}" },
-            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
+            "url": { "raw": "{{api_base_url}}/chat/completions", "host": [ "{{api_base_url}}" ], "path": [ "chat", "completions" ] },
             "description": "Multi-turn conversation (system + prior turns)."
           },
           "event": [
@@ -141,26 +164,24 @@
         {
           "name": "POST /v1/chat/completions (thinking: false)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Say hello in one word.\" }\n  ],\n  \"max_tokens\": 32,\n  \"thinking\": false\n}" },
-            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
-            "description": "Disables reasoning — faster, plain content only."
+            "url": { "raw": "{{api_base_url}}/chat/completions", "host": [ "{{api_base_url}}" ], "path": [ "chat", "completions" ] },
+            "description": "Disables reasoning — faster, plain content only. Supported: the request schema validates 'thinking' as a boolean and the llama.cpp backend maps it to chat_template_kwargs.enable_thinking."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Content present', () => pm.expect(pm.response.json().choices[0].message.content).to.be.ok);", "pm.test('No reasoning_content', () => pm.expect(pm.response.json().choices[0].message).to.not.have.property('reasoning_content'));" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Content present', () => pm.expect(pm.response.json().choices[0].message.content).to.be.a('string').and.have.lengthOf.above(0));", "pm.test('No reasoning_content', () => pm.expect(pm.response.json().choices[0].message).to.not.have.property('reasoning_content'));" ] } }
           ]
         },
         {
           "name": "POST /v1/chat/completions (thinking: true)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"How many primes are below 50?\" }\n  ],\n  \"max_tokens\": 1024,\n  \"thinking\": true\n}" },
-            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
-            "description": "Enables reasoning — response message carries reasoning_content."
+            "url": { "raw": "{{api_base_url}}/chat/completions", "host": [ "{{api_base_url}}" ], "path": [ "chat", "completions" ] },
+            "description": "Enables reasoning — the response message carries reasoning_content (thinking spends part of max_tokens)."
           },
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('reasoning_content present', () => { const rc = pm.response.json().choices[0].message.reasoning_content; pm.expect(rc).to.be.a('string').and.have.lengthOf.above(0); });" ] } }
@@ -169,15 +190,14 @@
         {
           "name": "POST /v1/chat/completions (stream: true)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Count from 1 to 10.\" }\n  ],\n  \"max_tokens\": 64,\n  \"stream\": true\n}" },
-            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
-            "description": "Server-Sent Events stream. Switch the Body view to 'Stream' or 'Raw' to watch chunks arrive; ends with `data: [DONE]`."
+            "url": { "raw": "{{api_base_url}}/chat/completions", "host": [ "{{api_base_url}}" ], "path": [ "chat", "completions" ] },
+            "description": "Server-Sent Events stream (text/event-stream). Inspect the raw body — chunks are `data: {...}` lines ending with `data: [DONE]`; do NOT parse it as a single JSON document."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('SSE chunks', () => pm.expect(pm.response.text()).to.include('data:'));" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Content-Type is SSE', () => pm.expect(pm.response.headers.get('Content-Type') || '').to.include('text/event-stream'));", "pm.test('SSE chunks + terminator', () => { const t = pm.response.text(); pm.expect(t).to.include('data:'); pm.expect(t).to.include('data: [DONE]'); });" ] } }
           ]
         }
       ]
@@ -189,12 +209,11 @@
         {
           "name": "POST /jobs (enqueue)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"prompt\": \"Say ok.\",\n  \"max_tokens\": 16\n}" },
             "url": { "raw": "{{base_url}}/jobs", "host": [ "{{base_url}}" ], "path": [ "jobs" ] },
-            "description": "The body becomes the job payload. Saves the returned id into the `job_id` variable for the requests below."
+            "description": "The body is stored verbatim as the job payload (delivered to workers via /jobs/next). Inherits collection API-key auth. Saves the returned id into the `job_id` variable for the requests below."
           },
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has job_id', () => pm.expect(pm.response.json()).to.have.property('job_id'));", "pm.collectionVariables.set('job_id', pm.response.json().job_id);" ] } }
@@ -203,52 +222,65 @@
         {
           "name": "POST /jobs/next (worker drain)",
           "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [],
             "url": { "raw": "{{base_url}}/jobs/next?worker_token={{worker_token}}", "host": [ "{{base_url}}" ], "path": [ "jobs", "next" ], "query": [ { "key": "worker_token", "value": "{{worker_token}}" } ] },
-            "description": "Worker long-poll (up to 25 s when the queue is empty). Auth: WORKER_TOKEN query param only — send NO Authorization header (a Bearer header here is ignored/403 on wrong token; the two auth worlds are independent)."
+            "description": "Worker long-poll (up to 25 s when the queue is empty). Auth: WORKER_TOKEN query param only — sends NO Authorization header (a Bearer header here is ignored; the two auth worlds are independent)."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has job key', () => pm.expect(pm.response.json()).to.have.property('job'));" ] } }
           ]
         },
         {
           "name": "POST /webhooks/completions (job result)",
           "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"result\": \"postman-ok\",\n  \"success\": true\n}" },
             "url": { "raw": "{{base_url}}/webhooks/completions", "host": [ "{{base_url}}" ], "path": [ "webhooks", "completions" ] },
-            "description": "Worker posts the finished result. No auth (current documented behavior)."
+            "description": "Worker posts the finished result. No auth (current documented behavior) — the unguessable job UUID is the capability. Run 'Enqueue job' first so {{job_id}} is set."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('ok true', () => pm.expect(pm.response.json().ok).to.eql(true));" ] } }
           ]
         },
         {
           "name": "GET /jobs/{job_id} (status)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "GET",
             "header": [],
             "url": { "raw": "{{base_url}}/jobs/{{job_id}}", "host": [ "{{base_url}}" ], "path": [ "jobs", "{{job_id}}" ] },
-            "description": "Job status/result — should read `completed` after the webhook above."
+            "description": "Job status/result — should read `completed` after the webhook above. Inherits collection API-key auth."
           },
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Status completed', () => pm.expect(pm.response.json().status).to.eql('completed'));" ] } }
           ]
         },
         {
+          "name": "POST /workers/heartbeat (worker liveness)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/workers/heartbeat?worker_token={{worker_token}}", "host": [ "{{base_url}}" ], "path": [ "workers", "heartbeat" ], "query": [ { "key": "worker_token", "value": "{{worker_token}}" } ] },
+            "description": "Worker heartbeat. Auth: WORKER_TOKEN query param only (no Authorization header) — same independent auth world as /jobs/next. Returns the breaker state."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has breaker_state', () => pm.expect(pm.response.json()).to.have.property('breaker_state'));" ] } }
+          ]
+        },
+        {
           "name": "GET /queue/metrics",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "GET",
             "header": [],
             "url": { "raw": "{{base_url}}/queue/metrics", "host": [ "{{base_url}}" ], "path": [ "queue", "metrics" ] },
-            "description": "Queue depth / breaker state."
+            "description": "Queue depth / breaker state. Inherits collection API-key auth."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has queue_depth', () => pm.expect(pm.response.json()).to.have.property('queue_depth'));" ] } }
           ]
         }
       ]
@@ -260,11 +292,10 @@
         {
           "name": "POST /v1/chat/completions — missing messages (400)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"max_tokens\": 10\n}" },
-            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
+            "url": { "raw": "{{api_base_url}}/chat/completions", "host": [ "{{api_base_url}}" ], "path": [ "chat", "completions" ] },
             "description": "400 with an OpenAI-style error whose message mentions `messages`."
           },
           "event": [
@@ -274,11 +305,10 @@
         {
           "name": "POST /v1/chat/completions — malformed JSON (400)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
             "method": "POST",
             "header": [ { "key": "Content-Type", "value": "application/json" } ],
             "body": { "mode": "raw", "raw": "{ \"model\": , }" },
-            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
+            "url": { "raw": "{{api_base_url}}/chat/completions", "host": [ "{{api_base_url}}" ], "path": [ "chat", "completions" ] },
             "description": "Unparseable body → 400 `invalid_request_error`."
           },
           "event": [
@@ -288,13 +318,14 @@
         {
           "name": "GET /v1/models — no API key (401)",
           "request": {
+            "auth": { "type": "noauth" },
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{base_url}}/v1/models", "host": [ "{{base_url}}" ], "path": [ "v1", "models" ] },
-            "description": "Deliberately sent without Authorization (auth block omitted). Expected 401 `invalid_api_key` when API_KEY is set — in dev mode (API_KEY empty) this returns 200 instead."
+            "url": { "raw": "{{api_base_url}}/models", "host": [ "{{api_base_url}}" ], "path": [ "models" ] },
+            "description": "Deliberately sent without Authorization (noauth overrides the collection bearer auth). Expected 401 `invalid_api_key` when API_KEY is set — in dev mode (API_KEY empty) this returns 200 instead, so the test only asserts when a key is configured."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('401 when auth enabled', () => { if (pm.environment.get('api_key') || pm.collectionVariables.get('api_key')) { pm.response.to.have.status(401); } });" ] } }
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('401 when auth enabled', () => { const key = pm.environment.get('api_key') || pm.collectionVariables.get('api_key'); if (key) { pm.response.to.have.status(401); } });" ] } }
           ]
         }
       ]

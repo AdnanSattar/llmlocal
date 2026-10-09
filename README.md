@@ -13,7 +13,9 @@ Model investigation, benchmark results and migration details (all under
 `docs/`): `INVESTIGATION.md`, `MODEL_RESEARCH.md`, `MODEL_REEVALUATION.md`,
 `MODEL_COMPARISON.md`, `MIGRATION_PLAN.md`, `API_EXAMPLES.md`; local numbers
 in `benchmarks/RESULTS.md`. A ready-made Postman collection lives at
-`docs/llmlocal.postman_collection.json`.
+`docs/llmlocal.postman_collection.json` (import
+`docs/llmlocal.postman_environment.json` for the production `base_url` and
+placeholder secrets).
 
 ---
 

@@ -22,7 +22,12 @@ Prefer clicking to curling? The server ships its own references:
 - **`GET /redoc`** — ReDoc reference (read-only).
 - **`GET /openapi.json`** — the raw OpenAPI schema.
 - **`docs/llmlocal.postman_collection.json`** — a Postman collection covering
-  every endpoint; set its `base_url`, `api_key` and `worker_token` variables.
+  every endpoint, with **`docs/llmlocal.postman_environment.json`** as a safe
+  import template (placeholders only). URLs are built from `{{base_url}}`
+  (origin only — no trailing slash; production `http://8.231.171.198:8000`) and
+  `{{api_base_url}}` (`{{base_url}}/v1`); set `api_key` and `worker_token` in
+  the environment. A collection pre-request script strips any trailing slash
+  so a `base_url` ending in `/` can never produce `//v1/...`.
 
 These three HTTP routes are public (no API key) — they expose endpoint shapes,
 not data.
