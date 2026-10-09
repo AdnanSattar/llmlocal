@@ -25,6 +25,8 @@ services:
       - LLM_REQUEST_TIMEOUT=${LLM_REQUEST_TIMEOUT:-600}
       - LLM_STARTUP_TIMEOUT=${LLM_STARTUP_TIMEOUT:-180}
       - LLM_EXTRA_ARGS=${LLM_EXTRA_ARGS:-}
+      - LLM_MODEL_REPO=${LLM_MODEL_REPO:-}
+      - HF_TOKEN=${HF_TOKEN:-}
       # API key guarding /v1/*, POST /jobs, GET /jobs/{id} and GET /queue/metrics
       # (Authorization: Bearer <key>); empty value = dev mode with routes open.
       # Sourced from .env at deploy time; never baked into the image, never printed.
@@ -38,7 +40,7 @@ services:
     volumes:
       # Mount, don't bake (models/ is gitignored and dockerignored): keeps the
       # image small and rebuilds model-independent.
-      - ./models/gguf:/app/models/gguf:ro
+      - ./models/gguf:/app/models/gguf
     deploy:
       resources:
         limits:
