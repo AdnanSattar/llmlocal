@@ -4,14 +4,16 @@
 # server (on the same machine/LAN), and posts results back via a webhook.
 #
 # Usage:
-#   chmod +x worker.sh
+#   chmod +x scripts/worker.sh
 #   WORKER_TOKEN=change-me API_BASE="http://34.105.69.230/chippygpt-staging" \
-#     LOCAL_MODEL_BASE="http://localhost:8000" ./worker.sh
+#     LOCAL_MODEL_BASE="http://localhost:8000" ./scripts/worker.sh
 #
 # Environment variables:
 #   API_BASE          Base URL of the public API (cloud) exposing /jobs endpoints
 #   WORKER_TOKEN      Shared secret for /jobs/next and /workers/heartbeat
 #   LOCAL_MODEL_BASE  Base URL for the local model server (default http://localhost:8000)
+#   API_KEY           Optional: Bearer key for LOCAL_MODEL_BASE /v1 calls (if the
+#                     server has API-key auth enabled; header omitted when empty)
 #   POLL_DELAY_MS     Delay between polls when idle (default 800)
 #   HEARTBEAT_SEC     Interval between heartbeats (default 10)
 #   TIMEOUT_SEC       Timeout for HTTP requests (default 60)
@@ -21,6 +23,7 @@ set -euo pipefail
 API_BASE=${API_BASE:-"http://127.0.0.1:8000"}
 WORKER_TOKEN=${WORKER_TOKEN:-"change-me"}
 LOCAL_MODEL_BASE=${LOCAL_MODEL_BASE:-"http://localhost:8000"}
+API_KEY=${API_KEY:-""}
 POLL_DELAY_MS=${POLL_DELAY_MS:-800}
 HEARTBEAT_SEC=${HEARTBEAT_SEC:-10}
 TIMEOUT_SEC=${TIMEOUT_SEC:-60}
@@ -53,9 +56,13 @@ while true; do
   PROBE=$(echo "$JOB" | jq -r '.probe // false')
   PAYLOAD=$(echo "$JOB" | jq -c '.payload // {}')
 
-  # Execute against local model server
+  # Execute against local model server (Authorization only when API_KEY is set)
+  AUTH_ARGS=()
+  if [[ -n "$API_KEY" ]]; then
+    AUTH_ARGS=(-H "Authorization: Bearer ${API_KEY}")
+  fi
   RESULT=$(curl -s -m "$TIMEOUT_SEC" -X POST "${LOCAL_MODEL_BASE}/v1/completions" \
-    -H "Content-Type: application/json" -d "$PAYLOAD" || echo '{}')
+    "${AUTH_ARGS[@]}" -H "Content-Type: application/json" -d "$PAYLOAD" || echo '{}')
   CURL_RC=$?
 
   SUCCESS=true

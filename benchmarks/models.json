@@ -1,0 +1,56 @@
+{
+  "comment": "Models to benchmark by spawning llama-server per model. Paths are relative to the repo root. api=chat uses /v1/chat/completions; api=completions uses /v1/completions with the FLAN-style Instruction/Question/Answer wrapper (mirrors the legacy server.py prompt format).",
+  "threads": 4,
+  "context_size": 8192,
+  "port": 8099,
+  "models": [
+    {
+      "label": "Qwen3-1.7B-Q4_K_M",
+      "api": "chat",
+      "gguf": "models/gguf/Qwen3-1.7B-Q4_K_M.gguf",
+      "ctx": 8192,
+      "temperature": 0.6,
+      "top_p": 0.95
+    },
+    {
+      "label": "Qwen3.5-2B-Q4_K_M",
+      "api": "chat",
+      "gguf": "models/gguf/Qwen3.5-2B-Q4_K_M.gguf",
+      "ctx": 8192,
+      "temperature": 0.6,
+      "top_p": 0.95
+    },
+    {
+      "label": "SmolLM3-3B-Q4_K_M",
+      "api": "chat",
+      "gguf": "models/gguf/SmolLM3-Q4_K_M.gguf",
+      "ctx": 8192,
+      "temperature": 0.6,
+      "top_p": 0.95
+    },
+    {
+      "label": "Qwen3-4B-Q4_K_M",
+      "api": "chat",
+      "gguf": "models/gguf/Qwen3-4B-Q4_K_M.gguf",
+      "ctx": 8192,
+      "temperature": 0.6,
+      "top_p": 0.95
+    },
+    {
+      "label": "Qwen3.5-4B-Q4_K_M",
+      "api": "chat",
+      "gguf": "models/gguf/Qwen_Qwen3.5-4B-Q4_K_M.gguf",
+      "ctx": 8192,
+      "temperature": 0.6,
+      "top_p": 0.95
+    },
+    {
+      "label": "gemma-4-e2b-it",
+      "api": "chat",
+      "gguf": "models/gguf/gemma-4-E2B-it-Q4_K_M.gguf",
+      "ctx": 8192,
+      "temperature": 0.6,
+      "top_p": 0.95
+    }
+  ]
+}

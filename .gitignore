@@ -4,6 +4,12 @@
 # Downloaded / cached Hugging Face models (mounted at ./models)
 models/
 
+# Downloaded runtimes (llama.cpp release zips/binaries)
+tools/
+
+# Runtime logs
+logs/
+
 # Secrets and local config (use .env.example as a template if you add one)
 .env
 .env.*
@@ -18,8 +24,25 @@ __pycache__/
 venv/
 env/
 
+# Python tooling caches / build artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+*.egg-info/
+.eggs/
+build/
+dist/
+
 # Logs and local runtime
 *.log
+*.pid
+
+# Benchmark run scratch (keep the *.json result files; ignore raw logs/streams)
+benchmarks/results/**/*.err
+benchmarks/results/**/*.out
+benchmarks/results/**/*.log
+benchmarks/results/**/*.pid
 
 # OS / editor
 .DS_Store

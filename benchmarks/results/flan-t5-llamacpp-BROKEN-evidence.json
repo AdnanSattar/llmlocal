@@ -1,0 +1,128 @@
+{
+  "label": "flan-t5-small-Q4_K_M-llamacpp",
+  "mode": "llama_server",
+  "generated_at": "2026-10-06T16:15:50",
+  "api": "completions",
+  "gguf": "models/gguf/flan-t5-small.Q4_K_M.gguf",
+  "threads": 4,
+  "ctx": 1024,
+  "sampling": {
+    "temperature": 0.2,
+    "top_p": 1.0
+  },
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "python": "3.14.7",
+    "physical_cores": 4,
+    "logical_cores": 8,
+    "ram_gb": 15.8
+  },
+  "server": {
+    "load_s": 0.54,
+    "peak_rss_mb": 137.2,
+    "avg_cpu_pct": 354.0,
+    "sys_cpu_pct": 52.1
+  },
+  "summary": {
+    "prompts": 2,
+    "errors": 0,
+    "checks_passed": 0,
+    "checks_total": 2,
+    "avg_ttft_s": 0.051,
+    "avg_decode_tps": 157.65,
+    "avg_total_s": 0.86,
+    "reasoning_separated_prompts": 0,
+    "think_tag_leaks": 0
+  },
+  "results": [
+    {
+      "id": "instruction_summary2",
+      "category": "instruction",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 0.051,
+      "total_s": 1.669,
+      "decode_tps": 157.65,
+      "completion_tokens": 256,
+      "usage": {
+        "completion_tokens": 256,
+        "prompt_tokens": 126,
+        "total_tokens": 382,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 126,
+        "prompt_ms": 37.622,
+        "prompt_per_token_ms": 0.29858730158730157,
+        "prompt_per_second": 3349.104247514752,
+        "predicted_n": 256,
+        "predicted_ms": 1617.345,
+        "predicted_per_token_ms": 6.342529411764706,
+        "predicted_per_second": 157.6658041419734
+      },
+      "finish_reason": "length",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................",
+      "checks": [
+        {
+          "type": "sentence_count",
+          "passed": false,
+          "detail": "sentences=1"
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 1
+    },
+    {
+      "id": "reasoning_syllogism",
+      "category": "reasoning",
+      "error": null,
+      "streamed": true,
+      "ttft_s": null,
+      "total_s": 0.051,
+      "decode_tps": null,
+      "completion_tokens": 0,
+      "usage": {
+        "completion_tokens": 1,
+        "prompt_tokens": 69,
+        "total_tokens": 70,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 69,
+        "prompt_ms": 36.178,
+        "prompt_per_token_ms": 0.5243188405797101,
+        "prompt_per_second": 1907.236442036597,
+        "predicted_n": 1,
+        "predicted_ms": 0.001,
+        "predicted_per_token_ms": 0.0,
+        "predicted_per_second": 0.0
+      },
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "",
+      "checks": [
+        {
+          "type": "first_word_in",
+          "passed": false,
+          "detail": "first_word=''"
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 1
+    }
+  ]
+}

@@ -1,0 +1,303 @@
+{
+  "info": {
+    "_postman_id": "5b2f1c6e-9a4d-4e3b-8f21-0a7c6d5e4b3a",
+    "name": "llmlocal — OpenAI-compatible local LLM server",
+    "description": "All endpoints of the llmlocal server (default http://localhost:8000).\n\n**Interactive alternative:** the running server serves live Swagger UI at `/docs` (and ReDoc at `/redoc`) with an **Authorize** button and request-body examples pre-filled for the POST endpoints — handy for a quick manual check before scripting.\n\n**Auth setup:** set the collection variable `api_key` to the `API_KEY` value from `.env` (any non-empty string; the server does not require a particular format). Requests that need auth carry it as `Authorization: Bearer {{api_key}}` automatically. Leave it empty when running in dev mode (API_KEY unset).\n\n**Worker endpoints** (`/jobs/next`, `/workers/heartbeat`) use `WORKER_TOKEN` in the query string instead — never the API key. `/health`, `/docs`, `/redoc`, `/openapi.json` and `/webhooks/completions` need no credentials.\n\nSee `docs/API_EXAMPLES.md` for curl equivalents and `README.md` for the full auth model. Streaming requests (`\"stream\": true`) return `text/event-stream`; use Postman's Stream/Raw view to watch chunks.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000", "type": "string" },
+    { "key": "api_key", "value": "", "type": "string", "description": "Paste your .env API_KEY value here. Never commit a real key." },
+    { "key": "worker_token", "value": "change-me", "type": "string", "description": "WORKER_TOKEN from .env (default shown; override if changed)." },
+    { "key": "model", "value": "Qwen3-1.7B-Q4_K_M", "type": "string", "description": "Default served model id; adjust if LLM_MODEL differs." },
+    { "key": "job_id", "value": "", "type": "string", "description": "Set automatically by the 'Enqueue job' request." }
+  ],
+  "item": [
+    {
+      "name": "Health & Docs",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/health", "host": [ "{{base_url}}" ], "path": [ "health" ] },
+            "description": "Liveness probe. Public — no auth required."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+          ]
+        },
+        {
+          "name": "GET /docs (Swagger UI)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/docs", "host": [ "{{base_url}}" ], "path": [ "docs" ] },
+            "description": "Interactive Swagger UI. Public — open in a browser, no API key needed."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Serves Swagger UI', () => pm.expect(pm.response.text()).to.include('swagger'));" ] } }
+          ]
+        },
+        {
+          "name": "GET /redoc",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/redoc", "host": [ "{{base_url}}" ], "path": [ "redoc" ] },
+            "description": "ReDoc reference documentation. Public."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+          ]
+        },
+        {
+          "name": "GET /openapi.json",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/openapi.json", "host": [ "{{base_url}}" ], "path": [ "openapi.json" ] },
+            "description": "Machine-readable OpenAPI schema."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has paths', () => pm.expect(pm.response.json().paths).to.have.property('/v1/chat/completions'));" ] } }
+          ]
+        },
+        {
+          "name": "GET /v1/models",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/models", "host": [ "{{base_url}}" ], "path": [ "v1", "models" ] },
+            "description": "Lists the served model. Requires the API key when auth is enabled."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Chat & Completions",
+      "item": [
+        {
+          "name": "POST /v1/completions (basic)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"prompt\": \"Explain what an API is.\",\n  \"max_tokens\": 60,\n  \"temperature\": 0.5\n}" },
+            "url": { "raw": "{{base_url}}/v1/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "completions" ] },
+            "description": "Basic text completion."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has choices', () => pm.expect(pm.response.json()).to.have.property('choices'));" ] } }
+          ]
+        },
+        {
+          "name": "POST /v1/completions (advanced params)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"prompt\": \"List three benefits of unit testing:\",\n  \"max_tokens\": 80,\n  \"temperature\": 0.4,\n  \"top_p\": 0.95,\n  \"stop\": [\"\\n\", \"User:\"]\n}" },
+            "url": { "raw": "{{base_url}}/v1/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "completions" ] },
+            "description": "temperature / top_p / stop-sequence sampling controls."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has usage', () => pm.expect(pm.response.json()).to.have.property('usage'));" ] } }
+          ]
+        },
+        {
+          "name": "POST /v1/chat/completions (system prompt)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"You are a helpful assistant that responds briefly and clearly.\" },\n    { \"role\": \"user\", \"content\": \"What is an API?\" }\n  ],\n  \"max_tokens\": 80,\n  \"temperature\": 0.3\n}" },
+            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
+            "description": "Chat completion with a system prompt."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Assistant reply', () => pm.expect(pm.response.json().choices[0].message.role).to.eql('assistant'));" ] } }
+          ]
+        },
+        {
+          "name": "POST /v1/chat/completions (multi-turn)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"You are a helpful assistant.\" },\n    { \"role\": \"user\", \"content\": \"What is the capital of France?\" },\n    { \"role\": \"assistant\", \"content\": \"Paris.\" },\n    { \"role\": \"user\", \"content\": \"And its population?\" }\n  ],\n  \"max_tokens\": 60\n}" },
+            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
+            "description": "Multi-turn conversation (system + prior turns)."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has content', () => pm.expect(pm.response.json().choices[0].message).to.have.property('content'));" ] } }
+          ]
+        },
+        {
+          "name": "POST /v1/chat/completions (thinking: false)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Say hello in one word.\" }\n  ],\n  \"max_tokens\": 32,\n  \"thinking\": false\n}" },
+            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
+            "description": "Disables reasoning — faster, plain content only."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Content present', () => pm.expect(pm.response.json().choices[0].message.content).to.be.ok);", "pm.test('No reasoning_content', () => pm.expect(pm.response.json().choices[0].message).to.not.have.property('reasoning_content'));" ] } }
+          ]
+        },
+        {
+          "name": "POST /v1/chat/completions (thinking: true)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"How many primes are below 50?\" }\n  ],\n  \"max_tokens\": 1024,\n  \"thinking\": true\n}" },
+            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
+            "description": "Enables reasoning — response message carries reasoning_content."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('reasoning_content present', () => { const rc = pm.response.json().choices[0].message.reasoning_content; pm.expect(rc).to.be.a('string').and.have.lengthOf.above(0); });" ] } }
+          ]
+        },
+        {
+          "name": "POST /v1/chat/completions (stream: true)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": \"Count from 1 to 10.\" }\n  ],\n  \"max_tokens\": 64,\n  \"stream\": true\n}" },
+            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
+            "description": "Server-Sent Events stream. Switch the Body view to 'Stream' or 'Raw' to watch chunks arrive; ends with `data: [DONE]`."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('SSE chunks', () => pm.expect(pm.response.text()).to.include('data:'));" ] } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jobs & Queue",
+      "description": "Async job queue. Enqueue with the API key, drain with the WORKER_TOKEN (a separate auth world — the API key is NOT accepted there), finish via webhook, then read status/metrics.",
+      "item": [
+        {
+          "name": "POST /jobs (enqueue)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"prompt\": \"Say ok.\",\n  \"max_tokens\": 16\n}" },
+            "url": { "raw": "{{base_url}}/jobs", "host": [ "{{base_url}}" ], "path": [ "jobs" ] },
+            "description": "The body becomes the job payload. Saves the returned id into the `job_id` variable for the requests below."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has job_id', () => pm.expect(pm.response.json()).to.have.property('job_id'));", "pm.collectionVariables.set('job_id', pm.response.json().job_id);" ] } }
+          ]
+        },
+        {
+          "name": "POST /jobs/next (worker drain)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/jobs/next?worker_token={{worker_token}}", "host": [ "{{base_url}}" ], "path": [ "jobs", "next" ], "query": [ { "key": "worker_token", "value": "{{worker_token}}" } ] },
+            "description": "Worker long-poll (up to 25 s when the queue is empty). Auth: WORKER_TOKEN query param only — send NO Authorization header (a Bearer header here is ignored/403 on wrong token; the two auth worlds are independent)."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+          ]
+        },
+        {
+          "name": "POST /webhooks/completions (job result)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"result\": \"postman-ok\",\n  \"success\": true\n}" },
+            "url": { "raw": "{{base_url}}/webhooks/completions", "host": [ "{{base_url}}" ], "path": [ "webhooks", "completions" ] },
+            "description": "Worker posts the finished result. No auth (current documented behavior)."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+          ]
+        },
+        {
+          "name": "GET /jobs/{job_id} (status)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/jobs/{{job_id}}", "host": [ "{{base_url}}" ], "path": [ "jobs", "{{job_id}}" ] },
+            "description": "Job status/result — should read `completed` after the webhook above."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Status completed', () => pm.expect(pm.response.json().status).to.eql('completed'));" ] } }
+          ]
+        },
+        {
+          "name": "GET /queue/metrics",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/queue/metrics", "host": [ "{{base_url}}" ], "path": [ "queue", "metrics" ] },
+            "description": "Queue depth / breaker state."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 200', () => pm.response.to.have.status(200));" ] } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error examples",
+      "description": "Expected-failure requests. Tests assert the documented error behavior.",
+      "item": [
+        {
+          "name": "POST /v1/chat/completions — missing messages (400)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"model\": \"{{model}}\",\n  \"max_tokens\": 10\n}" },
+            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
+            "description": "400 with an OpenAI-style error whose message mentions `messages`."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 400', () => pm.response.to.have.status(400));", "pm.test('Mentions messages', () => pm.expect(pm.response.json().error.message.toLowerCase()).to.include('messages'));" ] } }
+          ]
+        },
+        {
+          "name": "POST /v1/chat/completions — malformed JSON (400)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{api_key}}", "type": "string" } ] },
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{ \"model\": , }" },
+            "url": { "raw": "{{base_url}}/v1/chat/completions", "host": [ "{{base_url}}" ], "path": [ "v1", "chat", "completions" ] },
+            "description": "Unparseable body → 400 `invalid_request_error`."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status 400', () => pm.response.to.have.status(400));", "pm.test('OpenAI error shape', () => pm.expect(pm.response.json()).to.have.nested.property('error.type'));" ] } }
+          ]
+        },
+        {
+          "name": "GET /v1/models — no API key (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/models", "host": [ "{{base_url}}" ], "path": [ "v1", "models" ] },
+            "description": "Deliberately sent without Authorization (auth block omitted). Expected 401 `invalid_api_key` when API_KEY is set — in dev mode (API_KEY empty) this returns 200 instead."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('401 when auth enabled', () => { if (pm.environment.get('api_key') || pm.collectionVariables.get('api_key')) { pm.response.to.have.status(401); } });" ] } }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,554 @@
+{
+  "label": "flan-t5-small-transformers",
+  "mode": "external",
+  "api": "completions",
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "python": "3.14.7",
+    "physical_cores": 4,
+    "logical_cores": 8,
+    "ram_gb": 15.8
+  },
+  "summary": {
+    "prompts": 16,
+    "errors": 0,
+    "checks_passed": 8,
+    "checks_total": 22,
+    "avg_ttft_s": 2.849,
+    "avg_decode_tps": null,
+    "avg_total_s": 2.85,
+    "end_to_end_tps": 9.17,
+    "budget_exhausted": 0,
+    "reasoning_separated_prompts": 0,
+    "think_tag_leaks": 0
+  },
+  "results": [
+    {
+      "id": "instruction_summary2",
+      "category": "instruction",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 3.045,
+      "total_s": 3.045,
+      "decode_tps": null,
+      "completion_tokens": 37,
+      "usage": {
+        "prompt_tokens": 129,
+        "completion_tokens": 37,
+        "total_tokens": 166
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "Artificial intelligence has transformed many industries over the past decade. But the rapid adoption of these systems has raised important questions about data privacy, algorithmic bias, and the displacement of traditional jobs.",
+      "checks": [
+        {
+          "type": "sentence_count",
+          "passed": true,
+          "detail": "sentences=2"
+        }
+      ],
+      "checks_passed": 1,
+      "checks_total": 1
+    },
+    {
+      "id": "reasoning_syllogism",
+      "category": "reasoning",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.517,
+      "total_s": 2.517,
+      "decode_tps": null,
+      "completion_tokens": 12,
+      "usage": {
+        "prompt_tokens": 72,
+        "completion_tokens": 12,
+        "total_tokens": 84
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "No.1st. The final answer: No.",
+      "checks": [
+        {
+          "type": "first_word_in",
+          "passed": true,
+          "detail": "first_word='no'"
+        }
+      ],
+      "checks_passed": 1,
+      "checks_total": 1
+    },
+    {
+      "id": "reasoning_widget_rate",
+      "category": "reasoning",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 3.246,
+      "total_s": 3.247,
+      "decode_tps": null,
+      "completion_tokens": 23,
+      "usage": {
+        "prompt_tokens": 53,
+        "completion_tokens": 23,
+        "total_tokens": 76
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "5 minutes to make 5 widgets = 60 minutes. 100 machines will need 60 minutes to create 100 widgets.",
+      "checks": [
+        {
+          "type": "first_number_equals",
+          "passed": true,
+          "detail": "found=5.0"
+        }
+      ],
+      "checks_passed": 1,
+      "checks_total": 1
+    },
+    {
+      "id": "math_arith",
+      "category": "math",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.532,
+      "total_s": 2.532,
+      "decode_tps": null,
+      "completion_tokens": 10,
+      "usage": {
+        "prompt_tokens": 31,
+        "completion_tokens": 10,
+        "total_tokens": 41
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "0237824753271353678",
+      "checks": [
+        {
+          "type": "first_number_equals",
+          "passed": false,
+          "detail": "found=2.3782475327135366e+17"
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 1
+    },
+    {
+      "id": "math_word",
+      "category": "math",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.457,
+      "total_s": 2.457,
+      "decode_tps": null,
+      "completion_tokens": 10,
+      "usage": {
+        "prompt_tokens": 47,
+        "completion_tokens": 10,
+        "total_tokens": 57
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "02080235247638454435",
+      "checks": [
+        {
+          "type": "first_number_equals",
+          "passed": false,
+          "detail": "found=2.0802352476384545e+18"
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 1
+    },
+    {
+      "id": "math_multistep",
+      "category": "math",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.399,
+      "total_s": 2.399,
+      "decode_tps": null,
+      "completion_tokens": 8,
+      "usage": {
+        "prompt_tokens": 38,
+        "completion_tokens": 8,
+        "total_tokens": 46
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "07532902453-97754",
+      "checks": [
+        {
+          "type": "first_number_equals",
+          "passed": false,
+          "detail": "found=7532902453.0"
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 1
+    },
+    {
+      "id": "code_debug",
+      "category": "coding",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.629,
+      "total_s": 2.629,
+      "decode_tps": null,
+      "completion_tokens": 21,
+      "usage": {
+        "prompt_tokens": 103,
+        "completion_tokens": 21,
+        "total_tokens": 124
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "nums[i] = average(nums) / num_(num_)",
+      "checks": [
+        {
+          "type": "contains_all",
+          "passed": false,
+          "detail": "missing=range(,len(nums)"
+        },
+        {
+          "type": "not_contains",
+          "passed": true,
+          "detail": "leaked="
+        }
+      ],
+      "checks_passed": 1,
+      "checks_total": 2
+    },
+    {
+      "id": "code_gen_palindrome",
+      "category": "coding",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 3.862,
+      "total_s": 3.863,
+      "decode_tps": null,
+      "completion_tokens": 67,
+      "usage": {
+        "prompt_tokens": 74,
+        "completion_tokens": 67,
+        "total_tokens": 141
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "if s in a ns1: return False if len(s) == s[::-1] and s.is_palindrome(s:s[0:]) = Falsal: print(s[1::]), exit()",
+      "checks": [
+        {
+          "type": "regex",
+          "passed": false,
+          "detail": ""
+        },
+        {
+          "type": "regex",
+          "passed": false,
+          "detail": ""
+        },
+        {
+          "type": "regex",
+          "passed": false,
+          "detail": ""
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 3
+    },
+    {
+      "id": "extraction_json",
+      "category": "extraction",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.611,
+      "total_s": 2.612,
+      "decode_tps": null,
+      "completion_tokens": 22,
+      "usage": {
+        "prompt_tokens": 70,
+        "completion_tokens": 22,
+        "total_tokens": 92
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "4471: John Smith was billed $1,250.00 on 2026-03-14 for annual maintenance.",
+      "checks": [
+        {
+          "type": "json_object",
+          "passed": false,
+          "detail": "json error: Extra data: line 1 column 5 (char 4)"
+        },
+        {
+          "type": "json_keys",
+          "passed": false,
+          "detail": "json error: Extra data: line 1 column 5 (char 4)"
+        },
+        {
+          "type": "json_contains",
+          "passed": false,
+          "detail": "json error: Extra data: line 1 column 5 (char 4)"
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 3
+    },
+    {
+      "id": "classification_intent",
+      "category": "classification",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.379,
+      "total_s": 2.379,
+      "decode_tps": null,
+      "completion_tokens": 13,
+      "usage": {
+        "prompt_tokens": 62,
+        "completion_tokens": 13,
+        "total_tokens": 75
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "return_reply_return_result",
+      "checks": [
+        {
+          "type": "first_word_in",
+          "passed": true,
+          "detail": "first_word='return'"
+        }
+      ],
+      "checks_passed": 1,
+      "checks_total": 1
+    },
+    {
+      "id": "planning_migration",
+      "category": "planning",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.716,
+      "total_s": 2.717,
+      "decode_tps": null,
+      "completion_tokens": 22,
+      "usage": {
+        "prompt_tokens": 58,
+        "completion_tokens": 22,
+        "total_tokens": 80
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "Write down the steps to create a MySQL database. Make sure that your MySQL database is up to date.",
+      "checks": [
+        {
+          "type": "min_numbered_steps",
+          "passed": false,
+          "detail": "steps=0"
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 1
+    },
+    {
+      "id": "rag_answer_from_context",
+      "category": "rag",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.923,
+      "total_s": 2.923,
+      "decode_tps": null,
+      "completion_tokens": 30,
+      "usage": {
+        "prompt_tokens": 113,
+        "completion_tokens": 30,
+        "total_tokens": 143
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "2011-04-20.'. (iv) The company originally built telemetry software for wind turbines before pivoting to medical imaging in 2006",
+      "checks": [
+        {
+          "type": "contains_all",
+          "passed": true,
+          "detail": "missing="
+        }
+      ],
+      "checks_passed": 1,
+      "checks_total": 1
+    },
+    {
+      "id": "hallucination_unanswerable",
+      "category": "hallucination",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.366,
+      "total_s": 2.366,
+      "decode_tps": null,
+      "completion_tokens": 12,
+      "usage": {
+        "prompt_tokens": 112,
+        "completion_tokens": 12,
+        "total_tokens": 124
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "e-mail address (e-email address)",
+      "checks": [
+        {
+          "type": "refusal",
+          "passed": false,
+          "detail": "no refusal pattern"
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 1
+    },
+    {
+      "id": "instruction_hierarchy",
+      "category": "hierarchy",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 2.934,
+      "total_s": 2.934,
+      "decode_tps": null,
+      "completion_tokens": 33,
+      "usage": {
+        "prompt_tokens": 67,
+        "completion_tokens": 33,
+        "total_tokens": 100
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "if you can't find the answer. If you want to write a 300-word essay, you'll need to do a few things.",
+      "checks": [
+        {
+          "type": "not_contains",
+          "passed": true,
+          "detail": "leaked="
+        },
+        {
+          "type": "word_count_max",
+          "passed": true,
+          "detail": "words=21"
+        }
+      ],
+      "checks_passed": 2,
+      "checks_total": 2
+    },
+    {
+      "id": "longctx_2k_needle",
+      "category": "long_context",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 3.467,
+      "total_s": 3.467,
+      "decode_tps": null,
+      "completion_tokens": 49,
+      "usage": {
+        "prompt_tokens": 1734,
+        "completion_tokens": 49,
+        "total_tokens": 1783
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "the affected customers within thirty minutes, and coordinates with the city traffic office to arrange signage and detours until the repair crew confirms pressure restoration and water clarity at the two downstream sampling points designated for post-repair verification.",
+      "checks": [
+        {
+          "type": "contains_all",
+          "passed": false,
+          "detail": "missing=FLUX-2981"
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 1
+    },
+    {
+      "id": "longctx_4k_needle",
+      "category": "long_context",
+      "error": null,
+      "streamed": true,
+      "ttft_s": 3.498,
+      "total_s": 3.498,
+      "decode_tps": null,
+      "completion_tokens": 49,
+      "usage": {
+        "prompt_tokens": 3291,
+        "completion_tokens": 49,
+        "total_tokens": 3340
+      },
+      "timings": null,
+      "finish_reason": "stop",
+      "reasoning_chars": 0,
+      "reasoning_head": "",
+      "reasoning_separated": false,
+      "think_tags_in_content": false,
+      "content": "the affected customers within thirty minutes, and coordinates with the city traffic office to arrange signage and detours until the repair crew confirms pressure restoration and water clarity at the two downstream sampling points designated for post-repair verification.",
+      "checks": [
+        {
+          "type": "contains_all",
+          "passed": false,
+          "detail": "missing=88-4102"
+        }
+      ],
+      "checks_passed": 0,
+      "checks_total": 1
+    }
+  ]
+}

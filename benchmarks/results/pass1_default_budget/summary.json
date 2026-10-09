@@ -1,0 +1,44 @@
+[
+  {
+    "label": "Qwen3-1.7B-Q4_K_M",
+    "gguf": "models/gguf/Qwen3-1.7B-Q4_K_M.gguf",
+    "mode": "llama_server",
+    "api": "chat",
+    "load_s": 4.62,
+    "peak_rss_mb": 3463.1,
+    "prompts": 16,
+    "errors": 0,
+    "checks_passed": 17,
+    "checks_total": 22,
+    "avg_ttft_s": 5.702,
+    "avg_decode_tps": 11.39,
+    "avg_total_s": 28.87,
+    "reasoning_separated_prompts": 11,
+    "think_tag_leaks": 0,
+    "llama_bench": {
+      "pp512_tps": 74.06,
+      "tg64_tps": 13.83
+    }
+  },
+  {
+    "label": "Qwen3.5-2B-Q4_K_M",
+    "gguf": "models/gguf/Qwen3.5-2B-Q4_K_M.gguf",
+    "mode": "llama_server",
+    "api": "chat",
+    "load_s": 18.27,
+    "peak_rss_mb": 2339.8,
+    "prompts": 16,
+    "errors": 0,
+    "checks_passed": 9,
+    "checks_total": 22,
+    "avg_ttft_s": 6.237,
+    "avg_decode_tps": 8.84,
+    "avg_total_s": 53.12,
+    "reasoning_separated_prompts": 16,
+    "think_tag_leaks": 0,
+    "llama_bench": {
+      "pp512_tps": 37.54,
+      "tg64_tps": 7.44
+    }
+  }
+]

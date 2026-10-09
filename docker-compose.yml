@@ -1,4 +1,59 @@
 services:
+  # Default service (no profile): llama.cpp CPU backend on ubuntu:24.04.
+  #   docker compose build && docker compose up -d
+  # Only port 8000 is published; the internal llama-server port 8100 stays
+  # bound to 127.0.0.1 inside the container and is never exposed to the host.
+  llama_cpp:
+    build: .
+    container_name: llama_cpp_server
+    ports:
+      - target: 8000
+        published: ${LLM_PORT:-8000}
+        protocol: tcp
+    environment:
+      - LLM_BACKEND=llama_cpp
+      - LLM_MODEL=${LLM_MODEL:-Qwen3-1.7B-Q4_K_M}
+      - LLM_MODEL_PATH=${LLM_MODEL_PATH:-models/gguf/Qwen3-1.7B-Q4_K_M.gguf}
+      - LLM_BACKEND_PORT=8100
+      - LLM_CONTEXT_SIZE=${LLM_CONTEXT_SIZE:-8192}
+      - LLM_THREADS=${LLM_THREADS:-0}
+      - LLM_THINKING=${LLM_THINKING:-auto}
+      - LLM_REASONING_FORMAT=${LLM_REASONING_FORMAT:-deepseek}
+      - LLM_REASONING_BUDGET=${LLM_REASONING_BUDGET:-0}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS:-1024}
+      - LLM_MAX_TOKENS_CAP=${LLM_MAX_TOKENS_CAP:-4096}
+      - LLM_REQUEST_TIMEOUT=${LLM_REQUEST_TIMEOUT:-600}
+      - LLM_STARTUP_TIMEOUT=${LLM_STARTUP_TIMEOUT:-180}
+      - LLM_EXTRA_ARGS=${LLM_EXTRA_ARGS:-}
+      # API key guarding /v1/*, POST /jobs, GET /jobs/{id} and GET /queue/metrics
+      # (Authorization: Bearer <key>); empty value = dev mode with routes open.
+      # Sourced from .env at deploy time; never baked into the image, never printed.
+      - API_KEY=${API_KEY:-}
+      # Shared secret for /jobs/next and /workers/heartbeat (query param) —
+      # same value the host-side scripts/test_api.sh and scripts/worker.sh
+      # read from .env (default: change-me).
+      - WORKER_TOKEN=${WORKER_TOKEN:-change-me}
+      # HF_TOKEN is intentionally NOT passed: the GGUF model is mounted from
+      # ./models/gguf and no Hugging Face download happens at runtime.
+    volumes:
+      # Mount, don't bake (models/ is gitignored and dockerignored): keeps the
+      # image small and rebuilds model-independent.
+      - ./models/gguf:/app/models/gguf:ro
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 2G
+    healthcheck:
+      # in-container API is always 8000 (LLM_PORT stays unset in the container)
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      # llama-server loads the GGUF on first request/startup (~10-30s for 1.7B)
+      start_period: 120s
+
   transformers:
     build: .
     container_name: transformers_server
@@ -8,6 +63,12 @@ services:
         protocol: tcp
     environment:
       - HF_TOKEN=${HF_TOKEN}
+      # same auth contract as the llama_cpp service (empty = dev mode)
+      - API_KEY=${API_KEY:-}
+      # the image defaults to the legacy pipeline; llama.cpp runs natively on
+      # the host (run.sh without --docker)
+      - LLM_BACKEND=transformers
+      - TRANSFORMERS_MODEL=${TRANSFORMERS_MODEL:-google/flan-t5-small}
     volumes:
       - ./models:/root/.cache/huggingface # cache models locally
     deploy:
@@ -17,7 +78,14 @@ services:
         reservations:
           memory: 4G
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${VLLM_PORT:-8000}/health"]
+      # the server always listens on 8000 *inside* the container; the host
+      # port is VLLM_PORT (previously this probed VLLM_PORT in-container,
+      # which broke whenever it differed from 8000)
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     profiles: ["transformers"]
 
   vllm:
@@ -33,8 +101,7 @@ services:
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}
       - VLLM_QUANTIZATION=${VLLM_QUANTIZATION}
     command: >
-      --model ${VLLM_MODELS} --device ${VLLM_DEVICE} --quantization ${VLLM_QUANTIZATION} --cuda_visible_devices ${CUDA_VISIBLE_DEVICES} --port 8000
+      --model ${VLLM_MODELS} --device ${VLLM_DEVICE} --quantization ${VLLM_QUANTIZATION} --port 8000
     volumes:
       - ./models:/root/.cache/huggingface
     profiles: ["vllm"]
-

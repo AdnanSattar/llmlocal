@@ -1,0 +1,22 @@
+# Keep the Docker build context small: the image only needs server.py,
+# backend/, app/ and requirements.txt (see the COPY lines in the Dockerfile).
+.git
+.gitignore
+.docker_built
+models/
+tools/
+logs/
+benchmarks/
+docs/
+scripts/
+*.md
+.env
+.env.*
+!.env.example
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+**/*.log
+**/*.pid
