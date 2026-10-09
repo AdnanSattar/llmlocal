@@ -13,6 +13,8 @@ import os
 import shlex
 import subprocess
 import threading
+import re
+from typing import Iterator, Optional
 import time
 import urllib.error
 import urllib.request
@@ -21,6 +23,28 @@ from typing import Iterator
 from .base import Backend, BackendError
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _ensure_model_exists(model_path: str) -> str:
+    p = model_path
+    if not os.path.isabs(p):
+        p = os.path.join(ROOT, p)
+    if os.path.isfile(p):
+        return p
+    try:
+        from huggingface_hub import hf_hub_download
+    except ImportError:
+        raise FileNotFoundError(f"model file not found and huggingface_hub unavailable: {p}")
+    repo = os.environ.get("LLM_MODEL_REPO") or os.environ.get("LLM_HF_REPO")
+    if not repo:
+        raise FileNotFoundError(f"model file not found: {p} (set LLM_MODEL_REPO to auto-download)")
+    filename = os.path.basename(p)
+    token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    local_dir = os.path.dirname(p) or os.path.join(ROOT, "models", "gguf")
+    os.makedirs(local_dir, exist_ok=True)
+    downloaded = hf_hub_download(repo_id=repo, filename=filename, local_dir=local_dir, token=token, local_dir_use_symlinks=False)
+    return downloaded
+
 
 # Request fields forwarded to llama-server. Unknown fields (our custom
 # "thinking", legacy "min_tokens", ...) are consumed here instead.
@@ -54,8 +78,7 @@ class LlamaCppBackend(Backend):
                  startup_timeout: float = 180.0, log_path: str = None,
                  extra_args: str = ""):
         self.model_id = model_id
-        self.model_path = os.path.abspath(os.path.join(ROOT, model_path)) \
-            if not os.path.isabs(model_path) else model_path
+        self.model_path = _ensure_model_exists(model_path)
         self.port = port
         self.context_size = context_size
         self.threads = threads

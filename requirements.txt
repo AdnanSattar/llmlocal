@@ -1,3 +1,4 @@
 fastapi==0.142.4
 starlette==1.6.0
 uvicorn==0.54.0
+huggingface_hub==0.26.5
