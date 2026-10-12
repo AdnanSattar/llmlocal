@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.." || exit 1
 # OpenAI API Compatible Local LLM Server Test Script
 # Override with env vars: BASE_URL=http://host:port MODEL=my-model ./scripts/test_api.sh
 
-BASE_URL="${BASE_URL:-http://localhost:8000}"
+BASE_URL="${BASE_URL:-http://localhost:2108}"
 
 # Model id echoed back by the server (defaults to whatever .env configures)
 MODEL="${MODEL:-$(grep -E '^LLM_MODEL=' .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r"')}"
