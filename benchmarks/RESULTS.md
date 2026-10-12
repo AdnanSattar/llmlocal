@@ -8,6 +8,57 @@ measured 2026-10-08 under background CPU contention — see Limitations.
 Nothing here is estimated or copied from model cards; every cell comes from
 `benchmarks/results/*.json`.
 
+## Live deployment closure — output guardrails (2026-10-12)
+
+**Status: closed.** Guardrail deployment and integration on the live service are
+complete and verified end-to-end against the public endpoint. No production
+code, configuration, model files, or guardrail settings were changed for the
+benchmark, and the service was not restarted or redeployed.
+
+- Endpoint / model / commit: `http://34.105.69.230/llmlocal`,
+  `Qwen3-4B-Q4_K_M`, repo `main` at `a6773a9`, container `llama_cpp_server`.
+- Live verification over the public API with bearer auth: `/llmlocal/health` →
+  200; `/llmlocal/v1/models` → 401 without a key and 200 with one; completion
+  responses carry a top-level `guardrails` object and withheld output returns
+  `finish_reason=content_filter`. A live probe returned
+  `{"guardrails":{"status":"passed"}}`.
+- Targeted protected-value test passed: the adversarial hierarchy prompt's answer
+  was withheld by the guardrail (no codeword leak).
+
+### Benchmark — baseline vs guardrail-enabled rerun
+
+Same harness and scoring (16 prompts / 11 categories / 22 checks,
+`--max-tokens-scale 4 --timeout 600`, `stream=true`), same public base URL:
+
+| Run | Artifacts | Guardrails | Score | Errors | Budget exhausted |
+| --- | --- | --- | --- | --- | --- |
+| baseline | `results/live-chip1-qwen3-4b-guardrails-20261012/` | inactive | 18/22 | 0 | 0 |
+| rerun | `results/live-chip1-qwen3-4b-guardrails-rerun-20261012/` | active | **19/22** | 0 | 0 |
+
+Both artifact directories are preserved unchanged. The one guardrail-attributable
+change is the instruction-hierarchy prompt, `0/2 → 2/2` (codeword withheld;
+fallback = 10 words). The `code_gen_palindrome` `isalnum` check also moved
+`2/3 → 3/3` through ordinary sampling variance (not guardrail-driven), and the
+`extraction_json` numeric check stayed failed (see follow-ups).
+
+### Follow-ups (open — not fixed in this closure)
+
+1. **Global word limit.** The configured global `LLM_GUARDRAIL_MAX_WORDS=30`
+   rejected two legitimate, longer-than-30-word answers as designed (fail-closed):
+   `instruction_summary2` (2-sentence summary → fallback) and
+   `planning_migration` (numbered plan → fallback). Review whether the word limit
+   should be global or scoped per request type; keep protected-value enforcement
+   fail-closed.
+2. **Numeric extraction schema.** `extraction_json` failed because the model
+   returned the amount as `"$1,250.00"` while the check expects a value matching
+   `1250`. Review the expected extraction schema and output normalization.
+3. **Benchmark timing limitation.** Guardrailed streaming buffers the whole
+   response until validation completes, so the rerun's reported
+   time-to-first-token (≈ total) and throughput are not comparable to the
+   unbuffered baseline; `usage`/`timings` are absent and per-token decode cannot
+   be measured. Treat guarded-run latency metrics as non-comparable in future
+   benchmark reports.
+
 ## Reproduce
 
 ```bash
@@ -216,3 +267,8 @@ approaches the cap.
 - TTFT includes template/prefill work; the two needles dominate TTFT averages.
 - `e2e t/s` mixes prefill and decode; `llama-bench` rows are the clean
   speed-comparison figures.
+- **Guarded-run timing is not comparable.** Output guardrails buffer the whole
+  response before emitting any chunk, so `TTFT ≈ total`, `usage`/`timings` are
+  absent, and decode/e2e rates are not measurable. Compare guarded runs on
+  pass/fail only, against an unguarded run of the same suite (see the closure
+  section above).
