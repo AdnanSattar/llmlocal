@@ -13,6 +13,12 @@ Two modes:
        python benchmarks/benchmark_models.py --base http://localhost:8000 \
            --label flan-t5-small-transformers --api chat
 
+   Endpoints that require auth read the bearer key from the API_KEY
+   environment variable (never logged, never written to results):
+
+       API_KEY=... python benchmarks/benchmark_models.py \
+           --base https://host/llmlocal --label live --api chat
+
 Stdlib only (psutil is optional and used for RAM/CPU sampling).
 
 Outputs: benchmarks/results/<label>.json  (raw outputs + metrics)
@@ -30,6 +36,7 @@ import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -97,6 +104,43 @@ def flan_style_prompt(messages):
 # ---------------------------------------------------------------------------
 # HTTP
 # ---------------------------------------------------------------------------
+
+def api_key_from_env(env=None):
+    """Read the external-mode bearer key from the environment; never logged."""
+    env = os.environ if env is None else env
+    key = (env.get("API_KEY", "") or "").strip()
+    return key or None
+
+
+def auth_header(api_key=None):
+    """Authorization header when a key is available, else an empty dict.
+
+    ``api_key=None`` reads the ``API_KEY`` environment variable; pass a string
+    (or ``""``) to decide explicitly. The value is never printed.
+    """
+    key = api_key_from_env() if api_key is None else api_key
+    return {"Authorization": f"Bearer {key}"} if key else {}
+
+
+def is_loopback(base_url):
+    host = (urllib.parse.urlsplit(base_url).hostname or "").lower()
+    return host in ("localhost", "127.0.0.1", "::1", "0.0.0.0")
+
+
+def external_auth_error(base_url, api_key, allow_no_auth=False):
+    """Return a message when an authenticated external endpoint lacks a key.
+
+    Loopback endpoints and ``--allow-no-auth`` keep the previous
+    unauthenticated behavior; anything else needs ``API_KEY``.
+    """
+    if api_key or allow_no_auth or is_loopback(base_url):
+        return None
+    return (
+        f"external endpoint {base_url} is not loopback and no API key was found. "
+        f"Set the API_KEY environment variable (sent as 'Authorization: Bearer ...'), "
+        f"or pass --allow-no-auth to deliberately call an unauthenticated endpoint."
+    )
+
 
 def _first_token(text):
     m = re.search(r"[A-Za-z0-9']+", text or "")
@@ -190,14 +234,17 @@ def run_check(content, chk):
     return False, f"unknown check {t}"
 
 
-def stream_request(url, payload, timeout):
+def stream_request(url, payload, timeout, api_key=None):
     """POST payload with stream=true; fall back to plain JSON if not SSE.
 
     Returns dict with content/reasoning/timings. TTFT = first generated token
-    (reasoning or content).
+    (reasoning or content). Bearer auth is added when a key is available
+    (API_KEY env var by default); the key is never recorded in the output.
     """
     data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    headers = {"Content-Type": "application/json"}
+    headers.update(auth_header(api_key))
+    req = urllib.request.Request(url, data=data, headers=headers)
     out = {
         "content": "", "reasoning": "", "ttft_s": None, "total_s": None,
         "completion_tokens": None, "usage": None, "timings": None,
@@ -405,7 +452,7 @@ def start_llama_server(cfg, port, threads):
 # suite execution
 # ---------------------------------------------------------------------------
 
-def run_suite(base_url, api, prompts, cfg, timeout, skip_categories=()):
+def run_suite(base_url, api, prompts, cfg, timeout, skip_categories=(), api_key=None):
     results = []
     endpoint = base_url + ("/v1/chat/completions" if api == "chat" else "/v1/completions")
     for p in prompts:
@@ -432,7 +479,7 @@ def run_suite(base_url, api, prompts, cfg, timeout, skip_categories=()):
                 "stream": True,
             }
         t_wall = time.perf_counter()
-        r = stream_request(endpoint, payload, timeout=timeout)
+        r = stream_request(endpoint, payload, timeout=timeout, api_key=api_key)
         wall = time.perf_counter() - t_wall
         content = r["content"]
         checks = []
@@ -571,6 +618,8 @@ def main():
                          "thinking, so scale > 1 keeps them from finishing before they answer")
     ap.add_argument("--max-tokens-cap", type=int, default=4096,
                     help="ceiling for scaled max_tokens; keep <= server LLM_MAX_TOKENS_CAP")
+    ap.add_argument("--allow-no-auth", action="store_true",
+                    help="external mode: permit a non-loopback endpoint with no API_KEY")
     args = ap.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
@@ -588,10 +637,16 @@ def main():
     if args.base:
         label = args.label or args.base
         cfg = {"label": label, "temperature": args.temperature, "top_p": args.top_p}
-        print(f"== benchmarking external endpoint {args.base} as '{label}' ==")
+        api_key = api_key_from_env()
+        err = external_auth_error(args.base, api_key, args.allow_no_auth)
+        if err:
+            print(f"error: {err}", file=sys.stderr)
+            sys.exit(2)
+        print(f"== benchmarking external endpoint {args.base} as '{label}' "
+              f"(auth: {'bearer' if api_key else 'none'}) ==")
         sampler = ResourceSampler(proc=None)
         sampler.start()
-        results = run_suite(args.base, args.api, prompts, cfg, args.timeout)
+        results = run_suite(args.base, args.api, prompts, cfg, args.timeout, api_key=api_key)
         sampler.finish()
         entry = {"label": label, "mode": "external", "api": args.api, "summary": summarize(results)}
     else:

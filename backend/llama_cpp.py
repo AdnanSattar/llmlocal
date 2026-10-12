@@ -319,25 +319,27 @@ class LlamaCppBackend(Backend):
 
 
 def _iter_sse(resp) -> Iterator[dict]:
-    """Parse an SSE body, yielding the JSON payloads of ``data:`` lines."""
-    buf = b""
+    """Parse an SSE body, yielding the JSON payloads of ``data:`` lines.
+
+    ``readline()`` reassembles a line split across TCP segments, so a ``data:``
+    delimiter or JSON payload split across network chunks is handled by the
+    reader. A final line with no trailing newline (EOF) is still parsed instead
+    of being dropped. Non-``data:`` framing and ``[DONE]`` are skipped; a
+    malformed JSON line is skipped without aborting the stream.
+    """
     while True:
-        chunk = resp.readline()
-        if not chunk:
-            break
-        buf += chunk
-        if not buf.endswith(b"\n"):
-            continue
-        line = buf.strip()
-        buf = b""
+        line = resp.readline()
+        if not line:
+            return
+        line = line.strip()
         if not line.startswith(b"data:"):
             continue
         raw = line[5:].strip()
         if raw == b"[DONE]":
-            break
+            return
         try:
             yield json.loads(raw.decode("utf-8", "replace"))
-        except Exception:
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
             continue
 
 

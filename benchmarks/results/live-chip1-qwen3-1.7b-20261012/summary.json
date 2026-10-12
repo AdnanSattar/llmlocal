@@ -1,0 +1,16 @@
+[
+  {
+    "label": "live-chip1-qwen3-1.7b",
+    "prompts": 16,
+    "errors": 0,
+    "checks_passed": 20,
+    "checks_total": 22,
+    "avg_ttft_s": 4.746,
+    "avg_decode_tps": 21.95,
+    "avg_total_s": 23.27,
+    "end_to_end_tps": 16.61,
+    "budget_exhausted": 0,
+    "reasoning_separated_prompts": 12,
+    "think_tag_leaks": 0
+  }
+]

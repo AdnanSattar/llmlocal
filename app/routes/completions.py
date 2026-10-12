@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from backend import BackendError
-from app import state
+from app import guardrails, state
 from app.auth import require_api_key
 from app.http import error_response, normalize_payload, read_json_body, sse_response
 
@@ -127,18 +127,28 @@ async def _handle_v1(request: Request, chat: bool):
 
     stream = payload.get("stream", False)
     endpoint = "chat" if chat else "completions"
+    policy = guardrails.load_policy()
     print(
         f"[v1] {endpoint} stream={stream} max_tokens={payload['max_tokens']} "
         f"temp={payload['temperature']}"
         + (f" thinking={payload['thinking']}" if "thinking" in payload else "")
+        + (" guardrails=on" if policy.active else "")
     )
 
     try:
         if stream:
+            if policy.active:
+                # Buffer the whole output before emitting anything, so a
+                # rejected answer can never leak through the SSE stream.
+                buffered = await run_in_threadpool(
+                    guardrails.collect_stream, state.BACKEND, payload, chat)
+                return sse_response(
+                    guardrails.replay_chunks(buffered, policy, chat))
             chunks = await run_in_threadpool(state.BACKEND.stream, payload, chat)
             return sse_response(chunks)
         response = await run_in_threadpool(state.BACKEND.complete, payload, chat)
         response["model"] = state.BACKEND.model_id
+        response, _ = guardrails.apply_guardrails(response, policy, chat)
         return JSONResponse(response)
     except BackendError as e:
         return error_response(e.status, str(e))

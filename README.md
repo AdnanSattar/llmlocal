@@ -99,6 +99,51 @@ curl http://localhost:8000/v1/chat/completions \
 
 ---
 
+## Output guardrails (optional)
+
+A small model will not reliably honour a system instruction that a user then
+tells it to ignore (the benchmark's instruction-hierarchy prompt proves this:
+the protected codeword leaks). Prompt wording can't guarantee an instruction
+hierarchy, so the service offers a **deterministic, post-generation** guardrail:
+output that violates an operator-configured policy is withheld instead of
+returned.
+
+Disabled by default. Enable with `LLM_GUARDRAILS=1` and configure one or both
+rules:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `LLM_GUARDRAILS` | _(off)_ | master switch (`1`/`true`/`yes`/`on`) |
+| `LLM_GUARDRAIL_PROTECTED_VALUES` | _(empty)_ | comma-separated literals that must never appear in an answer or its reasoning |
+| `LLM_GUARDRAIL_MAX_WORDS` | _(unset)_ | maximum words in the final answer |
+| `LLM_GUARDRAIL_GUARD_REASONING` | `1` | also screen `reasoning_content` |
+| `LLM_GUARDRAIL_FALLBACK_MESSAGE` | _(built-in)_ | safe replacement text when output is withheld |
+
+When a rule is violated the response keeps the OpenAI shape but the answer is
+replaced by the fallback, `finish_reason` becomes `"content_filter"`, and a
+top-level `guardrails` object reports the rule kind (never the protected value).
+The rejected text is discarded and never returned.
+
+```bash
+# .env
+LLM_GUARDRAILS=1
+LLM_GUARDRAIL_PROTECTED_VALUES=my-secret-token,another-secret
+LLM_GUARDRAIL_MAX_WORDS=120
+```
+
+Trade-off: a guarded **streaming** request is buffered end-to-end before any
+chunk is emitted, so no protected content can slip out mid-stream. That means no
+token-by-token streaming for guarded requests (time-to-first-token equals total
+generation time). Requests with no active guardrail policy keep the original
+pass-through streaming and are unaffected.
+
+Limitation: this is a literal, case-insensitive detector for the values you
+declare. It is not (and does not claim to be) a complete prompt-injection
+defence; rephrased or encoded disclosures that don't contain the literal value
+are not caught.
+
+---
+
 ## Configuration (`.env`)
 
 Key variables (full list with comments in `.env.example`):
@@ -114,6 +159,7 @@ Key variables (full list with comments in `.env.example`):
 | `LLM_THREADS` | `4` | CPU threads (`0` = auto) |
 | `LLM_MAX_TOKENS` / `LLM_MAX_TOKENS_CAP` | `1024` / `4096` | default + hard cap for `max_tokens` |
 | `LLM_THINKING` | `auto` | default thinking mode for reasoning models |
+| `LLM_GUARDRAILS` / `LLM_GUARDRAIL_PROTECTED_VALUES` / `LLM_GUARDRAIL_MAX_WORDS` | _(off)_ | optional post-generation output guardrails (see above) |
 | `API_KEY` | _(empty)_ | required `Authorization: Bearer …` key for `/v1/*` and job endpoints; empty = dev mode (open) |
 | `TRANSFORMERS_MODEL` | `google/flan-t5-small` | legacy backend model |
 
