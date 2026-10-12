@@ -79,6 +79,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         lifespan=lifespan,
+        root_path="/llmlocal",
         redirect_slashes=False,
         docs_url="/docs",
         redoc_url="/redoc",
